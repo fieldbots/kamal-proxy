@@ -158,10 +158,7 @@ func (s *Server) startHTTPServers() error {
 
 			handler.ServeHTTP(w, r)
 		}),
-		TLSConfig: &tls.Config{
-			NextProtos:     []string{"h2", "http/1.1", acme.ALPNProto},
-			GetCertificate: s.router.GetCertificate,
-		},
+		TLSConfig: newHTTPSTLSConfig(s.router.GetCertificate, []string{"h2", "http/1.1", acme.ALPNProto}),
 	}
 
 	go s.httpServer.Serve(s.httpListener)
@@ -217,6 +214,7 @@ func (s *Server) buildHandler() http.Handler {
 	// Note: handlers are executed in the inverse order.
 	handler = s.router
 	handler, _ = WithErrorPageMiddleware(pages.DefaultErrorPages, true, handler)
+	handler = WithSecurityHeadersMiddleware(handler)
 	handler = WithLoggingMiddleware(slog.Default(), s.config.HttpPort, s.config.HttpsPort, handler)
 	handler = WithRequestIDMiddleware(handler)
 	handler = WithRequestStartMiddleware(handler)
